@@ -1,0 +1,78 @@
+@if (!loaded()) {
+  <section class="card"><h2>Summary</h2><p class="muted">Loading…</p></section>
+} @else if (loadFailed()) {
+  <section class="card">
+    <h2>Summary</h2>
+    <p class="muted">
+      Couldn't load your expenses.
+      <button type="button" class="btn-secondary" (click)="retry()">Retry</button>
+    </p>
+  </section>
+} @else if (expenses().length === 0) {
+  <section class="card">
+    <h2>Summary</h2>
+    <p class="muted">No expenses yet. <a routerLink="/add">Add one</a> to see your totals.</p>
+  </section>
+} @else {
+  <div class="tiles">
+    <div class="tile">
+      <span class="label">Total spent</span>
+      <strong class="value">{{ total() | currency: 'INR' }}</strong>
+    </div>
+    <div class="tile">
+      <span class="label">This month</span>
+      <strong class="value">{{ thisMonth() | currency: 'INR' }}</strong>
+    </div>
+    <div class="tile">
+      <span class="label">Top category</span>
+      <strong class="value">{{ categories()[0].category }}</strong>
+    </div>
+  </div>
+
+  <section class="card">
+    <h2>Monthly totals</h2>
+    <p class="muted caption">
+      Last 12 months ({{ months()[0].month + '-01' | date: 'MMM yyyy' }} – {{ months()[11].month + '-01' | date: 'MMM yyyy' }})
+    </p>
+    <ol class="columns">
+      @for (m of months(); track m.month) {
+        @let label = (m.month + '-01' | date: 'MMM yyyy') + ': ' + (m.total | currency: 'INR') + ' (' + m.count + ')';
+        <!-- Focusable so keyboard users get the same tooltip as mouse users. -->
+        <li class="column" tabindex="0" [attr.aria-label]="label" [attr.data-tip]="label">
+          <div class="plot">
+            <div class="bar" [style.height.%]="share(m.total, monthMax())">
+              @if (m.total > 0 && m.total === monthMax()) {
+                <span class="cap">{{ m.total | currency: 'INR' : 'symbol' : '1.0-0' }}</span>
+              }
+            </div>
+          </div>
+          <span class="tick">{{ m.month + '-01' | date: 'MMM' }}</span>
+        </li>
+      }
+    </ol>
+    <details>
+      <summary>Show as table</summary>
+      <table>
+        <thead><tr><th>Month</th><th>Expenses</th><th>Total</th></tr></thead>
+        <tbody>
+          @for (m of months(); track m.month) {
+            <tr><td>{{ m.month + '-01' | date: 'MMMM yyyy' }}</td><td>{{ m.count }}</td><td>{{ m.total | currency: 'INR' }}</td></tr>
+          }
+        </tbody>
+      </table>
+    </details>
+  </section>
+
+  <section class="card">
+    <h2>By category</h2>
+    <ul class="hbars">
+      @for (c of categories(); track c.category) {
+        <li>
+          <span class="name">{{ c.category }}</span>
+          <span class="track"><span class="bar" [style.width.%]="share(c.total, categoryMax())"></span></span>
+          <span class="amount">{{ c.total | currency: 'INR' }} <small>{{ c.percent | number: '1.0-0' }}%</small></span>
+        </li>
+      }
+    </ul>
+  </section>
+}

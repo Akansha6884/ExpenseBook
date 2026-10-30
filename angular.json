@@ -39,7 +39,11 @@
             "prerender": true,
             "ssr": {
               "entry": "server.ts"
-            }
+            },
+            "externalDependencies": [
+              "better-sqlite3",
+              "exceljs"
+            ]
           },
           "configurations": {
             "production": {
@@ -75,7 +79,10 @@
               "buildTarget": "expense-book:build:development"
             }
           },
-          "defaultConfiguration": "development"
+          "defaultConfiguration": "development",
+          "options": {
+            "proxyConfig": "proxy.conf.json"
+          }
         },
         "extract-i18n": {
           "builder": "@angular-devkit/build-angular:extract-i18n"
@@ -103,5 +110,8 @@
         }
       }
     }
+  },
+  "cli": {
+    "analytics": "83e3294d-d488-48d7-9ce3-ac16106f6a7c"
   }
 }

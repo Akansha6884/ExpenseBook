@@ -1,0 +1,128 @@
+.page-title {
+  margin: 0 0 12px;
+  font-size: 22px;
+}
+
+.list-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.export {
+  display: flex;
+  gap: 8px;
+  font-size: 14px;
+}
+
+.summary {
+  margin: 0;
+  color: #666;
+  font-size: 14px;
+}
+
+.link {
+  padding: 0;
+  margin-left: 8px;
+  background: none;
+  color: #1565c0;
+  text-decoration: underline;
+}
+
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.right {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+// One height for every control so the labels line up.
+.field select,
+.search,
+.range {
+  height: 38px;
+}
+
+.search {
+  width: 220px;
+}
+
+// From → To in one box; each date opens its own picker.
+.range {
+  display: flex;
+  align-items: center;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background: #fff;
+
+  input {
+    border: none;
+  }
+
+  .arrow {
+    color: #666;
+  }
+
+  .clear-range {
+    padding: 0 10px;
+    background: none;
+    color: #666;
+    font-size: 18px;
+  }
+}
+
+ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid #eee;
+}
+
+.info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+small,
+.empty {
+  color: #666;
+}
+
+.amount {
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.total {
+  text-align: right;
+  margin: 12px 0 0;
+}

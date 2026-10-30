@@ -1,0 +1,93 @@
+<h2 class="page-title">Expenses</h2>
+
+@if (loaded() && !loadFailed() && expenses().length > 0) {
+  <div class="filters" role="search">
+    <label class="field">
+      <span>Sort by</span>
+      <select #sort class="sort" (change)="setSort(sort.value)">
+        @for (option of sortOptions; track option.value) {
+          <option [value]="option.value" [selected]="criteria().sort === option.value">{{ option.label }}</option>
+        }
+      </select>
+    </label>
+
+    <div class="right">
+      <div class="field">
+        <span id="range-label">Date range</span>
+        <div class="range" role="group" aria-labelledby="range-label">
+          <input #from class="from" type="date" aria-label="From date" [value]="criteria().from" [max]="criteria().to" (change)="setFrom(from.value)" />
+          <span class="arrow" aria-hidden="true">→</span>
+          <input #to class="to" type="date" aria-label="To date" [value]="criteria().to" [min]="criteria().from" (change)="setTo(to.value)" />
+          @if (criteria().from || criteria().to) {
+            <button type="button" class="clear-range" aria-label="Clear date range" (click)="clearRange()">×</button>
+          }
+        </div>
+      </div>
+
+      <label class="field">
+        <span>Category</span>
+        <select #category class="category" (change)="setCategory(category.value)">
+          <option value="all" [selected]="criteria().category === 'all'">All</option>
+          @for (c of categories; track c) {
+            <option [value]="c" [selected]="criteria().category === c">{{ c }}</option>
+          }
+        </select>
+      </label>
+
+      <label class="field">
+        <span>Search</span>
+        <input #search class="search" type="search" placeholder="Title contains…" [value]="criteria().search" (input)="setSearch(search.value)" />
+      </label>
+    </div>
+  </div>
+}
+
+<section class="card">
+  @if (!loaded()) {
+    <p class="empty">Loading…</p>
+  } @else if (loadFailed()) {
+    <p class="empty">
+      Couldn't load your expenses.
+      <button type="button" class="btn-secondary" (click)="retry()">Retry</button>
+    </p>
+  } @else if (expenses().length === 0) {
+    <p class="empty">No expenses yet. <a routerLink="/add">Add one</a> to get started.</p>
+  } @else {
+    <div class="list-head">
+      <p class="summary" aria-live="polite">
+        @if (filtersActive()) {
+          Showing {{ visible().length }} of {{ expenses().length }}
+          <button type="button" class="link" (click)="clearFilters()">Clear filters</button>
+        } @else {
+          {{ expenses().length }} {{ expenses().length === 1 ? 'expense' : 'expenses' }}
+        }
+      </p>
+      @if (visible().length > 0) {
+        <div class="export">
+          <a class="btn-secondary" [href]="xlsxUrl()" download>Export Excel</a>
+        </div>
+      }
+    </div>
+
+    @if (visible().length === 0) {
+      <p class="empty">No expenses match these filters.</p>
+    } @else {
+      <ul>
+        @for (expense of visible(); track expense.id) {
+          <li>
+            <div class="info">
+              <strong>{{ expense.title }}</strong>
+              <small>{{ expense.category }} · {{ expense.date | date: 'mediumDate' }}</small>
+            </div>
+            <span class="amount">{{ expense.amount | currency: 'INR' }}</span>
+            <a [routerLink]="['/edit', expense.id]" class="btn-secondary">Edit</a>
+            <button type="button" class="btn-danger" (click)="delete(expense)">Delete</button>
+          </li>
+        }
+      </ul>
+      <p class="total">
+        {{ filtersActive() ? 'Total shown' : 'Total' }}: <strong>{{ visibleTotal() | currency: 'INR' }}</strong>
+      </p>
+    }
+  }
+</section>

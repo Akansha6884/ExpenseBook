@@ -1,0 +1,47 @@
+.auth {
+  max-width: 400px;
+  margin: 40px auto 0;
+}
+
+form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.error,
+.hint {
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.error {
+  color: #c62828;
+}
+
+.hint,
+.switch {
+  color: #666;
+}
+
+.form-error {
+  margin: 0 0 12px;
+  padding: 8px 12px;
+  border-radius: 4px;
+  background: #fdecea;
+  color: #c62828;
+  font-size: 14px;
+}
+
+.switch {
+  margin: 16px 0 0;
+  font-size: 14px;
+}

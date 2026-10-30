@@ -1,0 +1,172 @@
+// One series per chart, so one validated hue (dataviz slot 1); text stays in text colors.
+$bar: #2a78d6;
+$muted: #666;
+$rule: #e5e5e5;
+
+.muted {
+  color: $muted;
+}
+
+.caption {
+  margin: -12px 0 12px;
+  font-size: 13px;
+}
+
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.tile {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px 16px;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.08);
+
+  .label {
+    color: $muted;
+    font-size: 13px;
+  }
+
+  .value {
+    font-size: 20px;
+  }
+}
+
+.card + .card {
+  margin-top: 16px;
+}
+
+.columns {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  gap: 2px;
+  height: 180px;
+  border-bottom: 1px solid $rule;
+}
+
+.column {
+  position: relative;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  outline-offset: 2px;
+
+  &:hover .bar,
+  &:focus-visible .bar {
+    filter: brightness(0.85);
+  }
+
+  &:hover::after,
+  &:focus-visible::after {
+    content: attr(data-tip);
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 4px 8px;
+    border-radius: 4px;
+    background: #222;
+    color: #fff;
+    font-size: 12px;
+    white-space: nowrap;
+    z-index: 1;
+  }
+
+  // Keep tooltips on the outer columns inside the card.
+  &:nth-child(-n + 2)::after {
+    left: 0;
+    transform: none;
+  }
+
+  &:nth-last-child(-n + 2)::after {
+    left: auto;
+    right: 0;
+    transform: none;
+  }
+}
+
+.plot {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+.column .bar {
+  position: relative;
+  width: min(24px, 70%);
+  background: $bar;
+  border-radius: 4px 4px 0 0;
+}
+
+// Sits above the bar without taking height from it, so bar heights stay exact.
+.cap {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  padding-bottom: 2px;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.tick {
+  position: absolute;
+  top: 100%;
+  width: 100%;
+  padding-top: 4px;
+  text-align: center;
+  color: $muted;
+  font-size: 11px;
+}
+
+details {
+  margin-top: 28px;
+  font-size: 14px;
+}
+
+.hbars {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+
+  li {
+    display: grid;
+    grid-template-columns: 80px 1fr auto;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 0;
+  }
+
+  .track {
+    display: block;
+  }
+
+  .bar {
+    display: block;
+    height: 16px;
+    min-width: 2px;
+    background: $bar;
+    border-radius: 0 4px 4px 0;
+  }
+
+  .amount {
+    white-space: nowrap;
+    font-weight: 600;
+
+    small {
+      color: $muted;
+      font-weight: 400;
+    }
+  }
+}

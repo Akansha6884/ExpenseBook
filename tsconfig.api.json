@@ -1,0 +1,13 @@
+/* Type-checks the Node API in api/ (run with `npm run typecheck:api`). */
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "types": [
+      "node"
+    ]
+  },
+  "include": [
+    "api/**/*.ts"
+  ]
+}

@@ -1,0 +1,60 @@
+<section class="card">
+  <h2>{{ isEdit() ? 'Edit Expense' : 'Add Expense' }}</h2>
+
+  @if (notFound()) {
+    <p class="empty">This expense doesn't exist. <a routerLink="/expenses">Back to expenses</a></p>
+  } @else {
+    @if (lastAdded(); as title) {
+      <p class="success">"{{ title }}" added. <a routerLink="/expenses">View expenses →</a></p>
+    }
+
+    <form [formGroup]="form" (ngSubmit)="submit()">
+      <label>
+        Title
+        <input type="text" formControlName="title" placeholder="e.g. Groceries" />
+        @if (form.controls.title.touched && form.controls.title.invalid) {
+          <span class="error">Title is required (max {{ titleMaxLength }} characters).</span>
+        }
+      </label>
+
+      <label>
+        Amount (₹)
+        <input type="number" formControlName="amount" [min]="amountMin" [max]="amountMax" step="0.01" placeholder="0.00" />
+        @if (form.controls.amount.touched && form.controls.amount.invalid) {
+          <span class="error">
+            @if (form.controls.amount.hasError('max')) {
+              Amount can't be more than {{ amountMax.toLocaleString('en-IN') }}.
+            } @else if (form.controls.amount.hasError('decimals')) {
+              Use at most 2 decimal places.
+            } @else {
+              Enter an amount greater than 0.
+            }
+          </span>
+        }
+      </label>
+
+      <label>
+        Category
+        <select formControlName="category">
+          @for (category of categories; track category) {
+            <option [value]="category">{{ category }}</option>
+          }
+        </select>
+      </label>
+
+      <label>
+        Date
+        <input type="date" formControlName="date" />
+      </label>
+
+      <div class="actions">
+        <button type="submit" class="btn-primary" [disabled]="saving()">
+          {{ saving() ? 'Saving…' : isEdit() ? 'Save changes' : 'Add' }}
+        </button>
+        @if (isEdit()) {
+          <a routerLink="/expenses" class="btn-secondary">Cancel</a>
+        }
+      </div>
+    </form>
+  }
+</section>

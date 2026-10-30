@@ -1,0 +1,94 @@
+header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+  background: #1565c0;
+  color: #fff;
+
+  h1 {
+    margin: 0;
+    font-size: 22px;
+  }
+
+  nav {
+    margin-right: auto;
+  }
+}
+
+nav {
+  display: flex;
+  gap: 8px;
+
+  a {
+    color: #fff;
+    text-decoration: none;
+    padding: 6px 12px;
+    border-radius: 4px;
+    opacity: 0.85;
+
+    &:hover {
+      opacity: 1;
+      background: rgb(255 255 255 / 0.1);
+    }
+
+    &.active {
+      opacity: 1;
+      background: rgb(255 255 255 / 0.2);
+      font-weight: 600;
+    }
+  }
+}
+
+.account {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  font-size: 14px;
+
+  .email {
+    overflow: hidden;
+    max-width: 240px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    opacity: 0.85;
+  }
+
+  .sign-out {
+    padding: 6px 12px;
+    background: rgb(255 255 255 / 0.15);
+    color: #fff;
+  }
+}
+
+.error-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin: 0 0 16px;
+  padding: 10px 14px;
+  border-radius: 4px;
+  background: #fdecea;
+  color: #c62828;
+
+  span {
+    flex: 1;
+  }
+
+  .dismiss {
+    padding: 0 4px;
+    background: none;
+    color: inherit;
+    font-size: 20px;
+    line-height: 1;
+  }
+}
+
+.container {
+  max-width: 1199px;
+  margin: 24px auto;
+  padding: 0 16px;
+}
