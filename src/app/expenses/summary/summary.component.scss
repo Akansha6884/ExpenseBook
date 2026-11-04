@@ -12,6 +12,11 @@ $rule: #e5e5e5;
   font-size: 13px;
 }
 
+.month {
+  display: block;
+  margin-bottom: 16px;
+}
+
 .tiles {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
@@ -107,6 +112,15 @@ $rule: #e5e5e5;
   width: min(24px, 70%);
   background: $bar;
   border-radius: 4px 4px 0 0;
+}
+
+// Not opacity: .cap sits inside the bar and would fade with it.
+.dimmed .bar {
+  background: rgba($bar, 0.4);
+}
+
+.selected .bar {
+  min-height: 2px;
 }
 
 // Sits above the bar without taking height from it, so bar heights stay exact.
