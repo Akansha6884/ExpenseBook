@@ -14,18 +14,44 @@
     <p class="muted">No expenses yet. <a routerLink="/add">Add one</a> to see your totals.</p>
   </section>
 } @else {
-  <label class="month">
-    Month
-    <select #month (change)="setMonth(month.value)">
-      <option value="all" [selected]="selectedMonth() === 'all'">All time</option>
-      @for (option of monthOptions(); track option) {
-        <option [value]="option" [selected]="selectedMonth() === option">{{ option + '-01' | date: 'MMMM yyyy' }}</option>
-      }
-    </select>
-  </label>
+  <div class="filters">
+    <label>
+      Month
+      <select #month (change)="setMonth(month.value)">
+        <option value="all" [selected]="selectedMonth() === 'all'">All time</option>
+        @for (option of monthOptions(); track option) {
+          <option [value]="option" [selected]="selectedMonth() === option">{{ option + '-01' | date: 'MMMM yyyy' }}</option>
+        }
+      </select>
+    </label>
+    <label>
+      Category
+      <select #category (change)="setCategory(category.value)">
+        <option value="all" [selected]="selectedCategory() === 'all'">All categories</option>
+        @for (option of categoryOptions; track option) {
+          <option [value]="option" [selected]="selectedCategory() === option">{{ option }}</option>
+        }
+      </select>
+    </label>
+  </div>
 
   <div class="tiles">
-    @if (selectedStats(); as stats) {
+    @let stats = selectedStats();
+    @if (selectedCategory() !== 'all') {
+      <div class="tile">
+        <span class="label">{{ selectedCategory() }} {{ stats ? 'in ' + (selectedMonth() + '-01' | date: 'MMM yyyy') : 'total' }}</span>
+        <strong class="value">{{ (categoryStats()?.total ?? 0) | currency: 'INR' }}</strong>
+      </div>
+      <div class="tile">
+        @if (stats) {
+          <span class="label">Expenses</span>
+          <strong class="value">{{ categoryStats()?.count ?? 0 }}</strong>
+        } @else {
+          <span class="label">This month</span>
+          <strong class="value">{{ thisMonth() | currency: 'INR' }}</strong>
+        }
+      </div>
+    } @else if (stats) {
       <div class="tile">
         <span class="label">Spent in {{ selectedMonth() + '-01' | date: 'MMM yyyy' }}</span>
         <strong class="value">{{ stats.total | currency: 'INR' }}</strong>
@@ -45,8 +71,19 @@
       </div>
     }
     <div class="tile">
-      <span class="label">Top category</span>
-      <strong class="value">{{ topCategory() }}</strong>
+      @if (selectedCategory() !== 'all') {
+        <span class="label">Share of spending</span>
+        <strong class="value">
+          @if (categoryStats(); as share) {
+            {{ share.percent | number: '1.0-0' }}%
+          } @else {
+            —
+          }
+        </strong>
+      } @else {
+        <span class="label">Top category</span>
+        <strong class="value">{{ topCategory() }}</strong>
+      }
     </div>
   </div>
 
@@ -104,7 +141,12 @@
     } @else {
       <ul class="hbars">
         @for (c of categories(); track c.category) {
-          <li>
+          @let selected = c.category === selectedCategory();
+          <li
+            [class.selected]="selected"
+            [class.dimmed]="selectedCategory() !== 'all' && !selected"
+            [attr.aria-current]="selected ? 'true' : null"
+          >
             <span class="name">{{ c.category }}</span>
             <span class="track"><span class="bar" [style.width.%]="share(c.total, categoryMax())"></span></span>
             <span class="amount">{{ c.total | currency: 'INR' }} <small>{{ c.percent | number: '1.0-0' }}%</small></span>

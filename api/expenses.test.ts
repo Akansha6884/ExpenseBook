@@ -159,7 +159,10 @@ describe('Expense API', () => {
 
       const old = new Client(base);
       old.cookie = `eb_session=${oldToken}`;
-      assert.equal((await old.call('GET', '/auth/me')).status, 401);
+      const me = await old.call('GET', '/auth/me');
+      assert.equal(me.status, 200);
+      assert.equal(me.data, null);
+      assert.equal((await old.call('GET', '/expenses')).status, 401);
     });
 
     it('limits repeated failed sign-ins', async () => {

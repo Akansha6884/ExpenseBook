@@ -25,7 +25,7 @@ export class AuthService {
     if (!this.isBrowser) {
       return Promise.resolve();
     }
-    this.checking ??= firstValueFrom(this.http.get<User>(`${AUTH_API}/me`)).then(
+    this.checking ??= firstValueFrom(this.http.get<User | null>(`${AUTH_API}/me`)).then(
       (user) => this.userSignal.set(user),
       () => this.userSignal.set(null)
     );

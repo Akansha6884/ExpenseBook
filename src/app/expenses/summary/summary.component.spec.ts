@@ -3,6 +3,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
+import { RouterTestingHarness } from '@angular/router/testing';
 import { AUTH_API, AuthService } from '../../auth/auth.service';
 import { Expense } from '../expense.model';
 import { EXPENSES_API, ExpenseService } from '../expense.service';
@@ -20,8 +21,15 @@ const expenses: Expense[] = [
   { id: 'd', title: 'Snacks', amount: 100, category: 'Food', date: `${lastMonth}-06` }
 ];
 
+const emptyMonth = shiftMonth(thisMonth, -2);
+const oldMonth = shiftMonth(thisMonth, -3);
+const book: Expense[] = [
+  ...expenses,
+  { id: 'e', title: 'Bus', amount: 50, category: 'Travel', date: `${oldMonth}-15` }
+];
+
 describe('SummaryComponent', () => {
-  let fixture: ComponentFixture<SummaryComponent>;
+  let fixture: ComponentFixture<unknown>;
   let http: HttpTestingController;
   let el: HTMLElement;
 
@@ -45,6 +53,49 @@ describe('SummaryComponent', () => {
 
   function texts(selector: string): string[] {
     return Array.from(el.querySelectorAll(selector)).map((n) => n.textContent?.trim() ?? '');
+  }
+
+  async function open(list: Expense[]): Promise<void> {
+    await create();
+    await respondWith(list);
+  }
+
+  /** The Month dropdown (the first one). */
+  function select(): HTMLSelectElement {
+    return el.querySelector('select') as HTMLSelectElement;
+  }
+
+  function categorySelect(): HTMLSelectElement {
+    return el.querySelectorAll('select')[1];
+  }
+
+  function choose(dropdown: HTMLSelectElement, value: string): void {
+    dropdown.value = value;
+    dropdown.dispatchEvent(new Event('change'));
+    fixture.detectChanges();
+  }
+
+  function selectMonth(value: string): void {
+    choose(select(), value);
+  }
+
+  function selectCategory(value: string): void {
+    choose(categorySelect(), value);
+  }
+
+  function monthName(month: string, format: string): string {
+    return formatDate(`${month}-01`, format, 'en-US');
+  }
+
+  function barHeights(): (string | undefined)[] {
+    return Array.from(el.querySelectorAll<HTMLElement>('.column .bar')).map((b) => b.style.height);
+  }
+
+  async function removeExpense(id: string): Promise<void> {
+    const removed = TestBed.inject(ExpenseService).remove(id);
+    http.expectOne({ method: 'DELETE', url: `${EXPENSES_API}/${id}` }).flush(null, { status: 204, statusText: 'No Content' });
+    await removed;
+    fixture.detectChanges();
   }
 
   beforeEach(async () => {
@@ -129,43 +180,6 @@ describe('SummaryComponent', () => {
   });
 
   describe('month filter', () => {
-    const emptyMonth = shiftMonth(thisMonth, -2);
-    const oldMonth = shiftMonth(thisMonth, -3);
-    const book: Expense[] = [
-      ...expenses,
-      { id: 'e', title: 'Bus', amount: 50, category: 'Travel', date: `${oldMonth}-15` }
-    ];
-
-    function select(): HTMLSelectElement {
-      return el.querySelector('select') as HTMLSelectElement;
-    }
-
-    function selectMonth(value: string): void {
-      select().value = value;
-      select().dispatchEvent(new Event('change'));
-      fixture.detectChanges();
-    }
-
-    function monthName(month: string, format: string): string {
-      return formatDate(`${month}-01`, format, 'en-US');
-    }
-
-    function barHeights(): (string | undefined)[] {
-      return Array.from(el.querySelectorAll<HTMLElement>('.column .bar')).map((b) => b.style.height);
-    }
-
-    async function removeExpense(id: string): Promise<void> {
-      const removed = TestBed.inject(ExpenseService).remove(id);
-      http.expectOne({ method: 'DELETE', url: `${EXPENSES_API}/${id}` }).flush(null, { status: 204, statusText: 'No Content' });
-      await removed;
-      fixture.detectChanges();
-    }
-
-    async function open(list: Expense[]): Promise<void> {
-      await create();
-      await respondWith(list);
-    }
-
     describe('dropdown', () => {
       it('is labelled Month and starts on All time', async () => {
         await open(book);
@@ -459,6 +473,307 @@ describe('SummaryComponent', () => {
         expect(texts('.tile .label')[0]).toBe('Total spent');
         expect(texts('.tile .value')).toEqual(['₹2,000.00', '₹900.00', 'Bills']);
         expect(el.querySelectorAll('.column').length).toBe(12);
+      });
+    });
+  });
+
+  describe('category filter', () => {
+    const allTimeTiles = ['₹2,050.00', '₹900.00', 'Bills'];
+
+    function hbarColor(selector: string): string {
+      return getComputedStyle(el.querySelector(`.hbars ${selector} .bar`) as HTMLElement).backgroundColor;
+    }
+
+    /** Renders Summary through the router, so leaving the page really destroys it. */
+    async function openRouted(): Promise<RouterTestingHarness> {
+      TestBed.inject(Router).resetConfig([
+        { path: 'summary', component: SummaryComponent },
+        { path: 'login', children: [] },
+        { path: 'other', children: [] }
+      ]);
+      const harness = await RouterTestingHarness.create();
+      fixture = harness.fixture;
+      await harness.navigateByUrl('/summary', SummaryComponent);
+      el = harness.routeNativeElement as HTMLElement;
+      await signIn(http);
+      await respondWith(book);
+      return harness;
+    }
+
+    describe('dropdown', () => {
+      it('is labelled Category, sits next to Month and starts on All categories', async () => {
+        await open(book);
+
+        expect(categorySelect().closest('label')?.textContent).toContain('Category');
+        expect(categorySelect().closest('.filters')).toBe(select().closest('.filters'));
+        expect(categorySelect().value).toBe('all');
+        expect(categorySelect().selectedOptions[0].textContent).toBe('All categories');
+      });
+
+      it('lists every category in order, with or without expenses', async () => {
+        await open(book);
+
+        const values = Array.from(categorySelect().options).map((o) => o.value);
+        expect(values).toEqual(['all', 'Food', 'Travel', 'Shopping', 'Bills', 'Other']);
+      });
+    });
+
+    it('shows the same values as before for All categories, with and without a month', async () => {
+      await open(book);
+      const heights = barHeights();
+      const amounts = texts('.hbars .amount');
+
+      selectCategory('Food');
+      selectCategory('all');
+
+      expect(texts('.tile .label')).toEqual(['Total spent', 'This month', 'Top category']);
+      expect(texts('.tile .value')).toEqual(allTimeTiles);
+      expect(barHeights()).toEqual(heights);
+      expect(texts('.hbars .amount')).toEqual(amounts);
+      expect(el.querySelectorAll('.selected, .dimmed').length).toBe(0);
+
+      selectMonth(lastMonth);
+      const monthTiles = texts('.tile .value');
+      selectCategory('Food');
+      selectCategory('all');
+
+      expect(texts('.tile .label')).toEqual([`Spent in ${monthName(lastMonth, 'MMM yyyy')}`, 'Expenses', 'Top category']);
+      expect(texts('.tile .value')).toEqual(monthTiles);
+    });
+
+    describe('a category with All time', () => {
+      beforeEach(async () => {
+        await open(book);
+        selectCategory('Food');
+      });
+
+      it('shows its total, this month and share of spending in the tiles', () => {
+        expect(texts('.tile .label')).toEqual(['Food total', 'This month', 'Share of spending']);
+        expect(texts('.tile .value')).toEqual(['₹700.00', '₹600.00', '34%']);
+      });
+
+      it('charts only that category over the same 12 months', () => {
+        const heights = barHeights();
+        expect(heights.length).toBe(12);
+        expect(heights[11]).toBe('100%'); // 600, the largest Food month
+        expect(heights[10]).toBe('16.6667%'); // 100 / 600
+        expect(heights[8]).toBe('0%'); // only Travel that month
+        expect(texts('.caption')[0]).toContain('Last 12 months');
+        expect(texts('.cap')).toEqual(['₹600']);
+
+        const rows = el.querySelectorAll('details tbody tr');
+        expect(rows.length).toBe(12);
+        expect(rows[11].textContent).toContain('₹600.00');
+        expect(rows[8].textContent).toContain('₹0.00');
+      });
+
+      it('keeps every category in By category and highlights the selected one', () => {
+        expect(texts('.hbars .name')).toEqual(['Bills', 'Food', 'Travel']);
+        expect(texts('.hbars .amount')).toEqual(['₹1,000.00 49%', '₹700.00 34%', '₹350.00 17%']);
+
+        const selected = el.querySelectorAll('.hbars li.selected');
+        expect(selected.length).toBe(1);
+        expect(selected[0].querySelector('.name')?.textContent).toBe('Food');
+        expect(selected[0].getAttribute('aria-current')).toBe('true');
+        expect(el.querySelectorAll('.hbars li.dimmed').length).toBe(2);
+        expect(el.querySelectorAll('.hbars [aria-current]').length).toBe(1);
+      });
+
+      it('dims the other rows in the same blue', () => {
+        expect(hbarColor('li.selected')).toBe('rgb(42, 120, 214)');
+        expect(hbarColor('li.dimmed')).toBe('rgba(42, 120, 214, 0.4)');
+      });
+    });
+
+    describe('a category and a month', () => {
+      beforeEach(async () => {
+        await open(book);
+        selectMonth(lastMonth);
+        selectCategory('Food');
+      });
+
+      it('shows that month and category in the tiles', () => {
+        expect(texts('.tile .label')).toEqual([`Food in ${monthName(lastMonth, 'MMM yyyy')}`, 'Expenses', 'Share of spending']);
+        expect(texts('.tile .value')).toEqual(['₹100.00', '1', '9%']);
+      });
+
+      it('charts only that category, with the month highlighted', () => {
+        const columns = el.querySelectorAll('.column');
+        expect(columns[10].classList).toContain('selected');
+        expect(columns[10].getAttribute('data-tip')).toContain('₹100.00 (1)');
+        expect(el.querySelectorAll('.column.dimmed').length).toBe(11);
+        expect(columns[11].getAttribute('data-tip')).toContain('₹600.00 (1)');
+      });
+
+      it("lists only that month's categories, with the category highlighted", () => {
+        expect(texts('.hbars .name')).toEqual(['Bills', 'Food']);
+        expect(texts('.hbars .amount')).toEqual(['₹1,000.00 91%', '₹100.00 9%']);
+        expect(el.querySelector('.hbars li.selected .name')?.textContent).toBe('Food');
+      });
+
+      it('leaves the other filter alone when one changes', () => {
+        const months = Array.from(select().options).map((o) => o.value);
+
+        selectCategory('Travel');
+        expect(select().value).toBe(lastMonth);
+        expect(Array.from(select().options).map((o) => o.value)).toEqual(months);
+
+        selectMonth(thisMonth);
+        expect(categorySelect().value).toBe('Travel');
+        expect(texts('.tile .value')).toEqual(['₹300.00', '1', '33%']);
+      });
+    });
+
+    it('moves the window back for an older month', async () => {
+      const older = shiftMonth(thisMonth, -20);
+      await open([...book, { id: 'o', title: 'Old', amount: 75, category: 'Food', date: `${older}-10` }]);
+
+      selectCategory('Food');
+      selectMonth(older);
+
+      expect(texts('.caption')[0]).toContain(`12 months (${monthName(shiftMonth(older, -11), 'MMM yyyy')} – ${monthName(older, 'MMM yyyy')})`);
+      const columns = el.querySelectorAll('.column');
+      expect(columns[11].classList).toContain('selected');
+      expect(columns[11].getAttribute('data-tip')).toContain('₹75.00 (1)');
+      expect(texts('.tile .value')).toEqual(['₹75.00', '1', '100%']);
+    });
+
+    it('adds up a category to the paisa', async () => {
+      await open([
+        { id: 'a', title: 'One', amount: 0.1, category: 'Food', date: `${thisMonth}-01` },
+        { id: 'b', title: 'Two', amount: 0.2, category: 'Food', date: `${thisMonth}-01` },
+        { id: 'c', title: 'Bill', amount: 0.7, category: 'Bills', date: `${thisMonth}-01` }
+      ]);
+
+      selectCategory('Food');
+      expect(texts('.tile .value')).toEqual(['₹0.30', '₹0.30', '30%']);
+
+      selectMonth(thisMonth);
+      expect(texts('.tile .value')).toEqual(['₹0.30', '2', '30%']);
+      expect(el.querySelector('.column.selected')?.getAttribute('data-tip')).toContain('₹0.30 (2)');
+    });
+
+    describe('no matching expenses', () => {
+      beforeEach(async () => {
+        await open(book);
+      });
+
+      it('shows "No data available" for a month without that category', () => {
+        selectMonth(thisMonth);
+        selectCategory('Bills');
+
+        expect(texts('.card .muted')).toEqual(['No data available', 'No data available']);
+        expect(el.querySelector('.columns')).toBeNull();
+        expect(el.querySelector('details')).toBeNull();
+        expect(el.querySelector('.hbars')).toBeNull();
+        expect(texts('.tile .label')).toEqual([`Bills in ${monthName(thisMonth, 'MMM yyyy')}`, 'Expenses', 'Share of spending']);
+        expect(texts('.tile .value')).toEqual(['₹0.00', '0', '—']);
+      });
+
+      it('shows "No data available" for a category without any expenses', () => {
+        selectCategory('Shopping');
+
+        expect(texts('.card .muted')).toEqual(['No data available', 'No data available']);
+        expect(el.querySelector('details')).toBeNull();
+        expect(texts('.tile .label')).toEqual(['Shopping total', 'This month', 'Share of spending']);
+        expect(texts('.tile .value')).toEqual(['₹0.00', '₹0.00', '—']);
+      });
+
+      it('brings the graphs back for a category with data, and for All categories', () => {
+        selectCategory('Shopping');
+
+        selectCategory('Food');
+        expect(el.textContent).not.toContain('No data available');
+        expect(el.querySelectorAll('.column').length).toBe(12);
+        expect(texts('.hbars .name')).toEqual(['Bills', 'Food', 'Travel']);
+
+        selectCategory('Shopping');
+        selectCategory('all');
+        expect(el.textContent).not.toContain('No data available');
+        expect(texts('.tile .value')).toEqual(allTimeTiles);
+      });
+    });
+
+    it('shows empty bars when the category only has expenses older than the chart', async () => {
+      const older = shiftMonth(thisMonth, -20);
+      await open([...book, { id: 's', title: 'Coat', amount: 75, category: 'Shopping', date: `${older}-10` }]);
+
+      selectCategory('Shopping');
+
+      expect(el.textContent).not.toContain('No data available');
+      expect(barHeights()).toEqual(Array<string>(12).fill('0%'));
+      expect(texts('.caption')[0]).toContain('Last 12 months');
+      expect(texts('.tile .value')).toEqual(['₹75.00', '₹0.00', '4%']);
+      expect(el.querySelector('.hbars li.selected .name')?.textContent).toBe('Shopping');
+    });
+
+    describe('keeping or resetting the selection', () => {
+      it('resets both filters when the user leaves Summary and comes back', async () => {
+        const harness = await openRouted();
+        selectMonth(lastMonth);
+        selectCategory('Food');
+        expect(texts('.tile .label')[0]).toBe(`Food in ${monthName(lastMonth, 'MMM yyyy')}`);
+
+        await harness.navigateByUrl('/other');
+        expect(harness.routeNativeElement).toBeNull();
+        await harness.navigateByUrl('/summary', SummaryComponent);
+        el = harness.routeNativeElement as HTMLElement;
+        harness.detectChanges();
+
+        expect(select().value).toBe('all');
+        expect(categorySelect().value).toBe('all');
+        expect(texts('.tile .value')).toEqual(allTimeTiles);
+      });
+
+      it('starts the next user on All categories after signing out', async () => {
+        const harness = await openRouted();
+        selectCategory('Food');
+        const auth = TestBed.inject(AuthService);
+
+        const signedOut = auth.logout();
+        http.expectOne({ method: 'POST', url: `${AUTH_API}/logout` }).flush(null, { status: 204, statusText: 'No Content' });
+        await signedOut;
+        await settle();
+        await fixture.whenStable();
+        expect(TestBed.inject(Router).url).toBe('/login');
+        expect(harness.routeNativeElement).toBeNull();
+
+        const signedIn = auth.login({ email: 'next@example.com', password: 'a-long-password' });
+        http.expectOne({ method: 'POST', url: `${AUTH_API}/login` }).flush({ id: 'u2', email: 'next@example.com' });
+        await signedIn;
+        await settle();
+        await harness.navigateByUrl('/summary', SummaryComponent);
+        el = harness.routeNativeElement as HTMLElement;
+        await respondWith(book);
+
+        expect(categorySelect().value).toBe('all');
+        expect(texts('.tile .label')[0]).toBe('Total spent');
+      });
+
+      it('shows no data when the selected category loses its last expense', async () => {
+        await open(book);
+        selectCategory('Travel');
+
+        await removeExpense('b');
+        await removeExpense('e');
+
+        expect(categorySelect().value).toBe('Travel');
+        expect(texts('.card .muted')).toEqual(['No data available', 'No data available']);
+        expect(texts('.tile .value')).toEqual(['₹0.00', '₹0.00', '—']);
+      });
+
+      it('keeps the category when the selected month drops out of the list', async () => {
+        await open(book);
+        selectMonth(oldMonth);
+        selectCategory('Travel');
+        expect(texts('.tile .value')).toEqual(['₹50.00', '1', '100%']);
+
+        await removeExpense('e');
+
+        expect(select().value).toBe('all');
+        expect(categorySelect().value).toBe('Travel');
+        expect(texts('.tile .label')).toEqual(['Travel total', 'This month', 'Share of spending']);
+        expect(texts('.tile .value')).toEqual(['₹300.00', '₹300.00', '15%']);
       });
     });
   });

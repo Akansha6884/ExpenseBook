@@ -262,11 +262,11 @@ describe('ExpenseListComponent', () => {
       expect(el.querySelector<HTMLSelectElement>('select.category')?.value).toBe('Travel');
     });
 
-    it('offers CSV and Excel downloads of the whole book', () => {
+    it('offers an Excel download of the whole book', () => {
       const links = Array.from(el.querySelectorAll<HTMLAnchorElement>('.export a'));
 
-      expect(links.map((a) => a.textContent?.trim())).toEqual(['Export CSV', 'Export Excel']);
-      expect(links.map((a) => a.getAttribute('href'))).toEqual([`${EXPENSES_API}/export.csv`, `${EXPENSES_API}/export.xlsx`]);
+      expect(links.map((a) => a.textContent?.trim())).toEqual(['Export Excel']);
+      expect(links.map((a) => a.getAttribute('href'))).toEqual([`${EXPENSES_API}/export.xlsx`]);
       expect(links.every((a) => a.hasAttribute('download'))).toBeTrue();
     });
 
@@ -275,11 +275,11 @@ describe('ExpenseListComponent', () => {
       setValue('input[type=search]', 'city bill', 'input');
       setValue('select.sort', 'amount-desc', 'change');
 
-      const csv = el.querySelector<HTMLAnchorElement>('.export a')?.getAttribute('href');
-      expect(csv).toBe(`${EXPENSES_API}/export.csv?search=city+bill&category=Bills&sort=amount-desc`);
+      const xlsx = el.querySelector<HTMLAnchorElement>('.export a')?.getAttribute('href');
+      expect(xlsx).toBe(`${EXPENSES_API}/export.xlsx?search=city+bill&category=Bills&sort=amount-desc`);
     });
 
-    it('hides the export links when nothing matches', () => {
+    it('hides the export link when nothing matches', () => {
       setValue('input[type=search]', 'nothing like this', 'input');
 
       expect(el.querySelector('.export')).toBeNull();

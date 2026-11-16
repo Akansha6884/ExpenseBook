@@ -51,7 +51,15 @@ describe('AuthService', () => {
     expect(auth.user()).toEqual(TEST_USER);
   });
 
-  it('treats a 401 from /me as signed out', async () => {
+  it('treats null from /me as signed out', async () => {
+    const checked = auth.ensureChecked();
+    http.expectOne(`${AUTH_API}/me`).flush(null);
+    await checked;
+
+    expect(auth.user()).toBeNull();
+  });
+
+  it('treats a failed /me request as signed out', async () => {
     const checked = auth.ensureChecked();
     http.expectOne(`${AUTH_API}/me`).flush({ error: 'Not signed in.' }, { status: 401, statusText: 'Unauthorized' });
     await checked;
@@ -125,15 +133,10 @@ describe('auth guards', () => {
     return TestBed.runInInjectionContext(() => guard(route, state) as Promise<boolean | UrlTree>);
   }
 
-  /** Runs the guard with the API answering /me for `user` (or 401); returns true or the redirect URL. */
+  /** Runs the guard with the API answering /me with `user` (null when signed out); returns true or the redirect URL. */
   async function check(guard: CanActivateFn, user: User | null): Promise<boolean | string> {
     const result = run(guard);
-    const me = TestBed.inject(HttpTestingController).expectOne(`${AUTH_API}/me`);
-    if (user) {
-      me.flush(user);
-    } else {
-      me.flush({ error: 'Not signed in.' }, { status: 401, statusText: 'Unauthorized' });
-    }
+    TestBed.inject(HttpTestingController).expectOne(`${AUTH_API}/me`).flush(user);
     const outcome = await result;
     return outcome instanceof UrlTree ? TestBed.inject(Router).serializeUrl(outcome) : outcome;
   }
