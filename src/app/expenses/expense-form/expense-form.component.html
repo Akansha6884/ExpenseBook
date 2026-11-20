@@ -18,6 +18,20 @@
       </label>
 
       <label>
+        Paid to
+        <input type="text" formControlName="paidTo" placeholder="e.g. Big Bazaar (optional)" />
+        @if (form.controls.paidTo.touched && form.controls.paidTo.invalid) {
+          <span class="error">
+            @if (form.controls.paidTo.hasError('maxlength')) {
+              At most {{ paidToMaxLength }} characters.
+            } @else {
+              Use letters and single spaces only.
+            }
+          </span>
+        }
+      </label>
+
+      <label>
         Amount (₹)
         <input type="number" formControlName="amount" [min]="amountMin" [max]="amountMax" step="0.01" placeholder="0.00" />
         @if (form.controls.amount.touched && form.controls.amount.invalid) {

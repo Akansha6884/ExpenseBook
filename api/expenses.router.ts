@@ -5,8 +5,10 @@ import {
   EXPENSE_CATEGORIES,
   ExpenseCategory,
   NewExpense,
+  PAID_TO_MAX_LENGTH,
   TITLE_MAX_LENGTH,
-  hasAtMostTwoDecimals
+  hasAtMostTwoDecimals,
+  isValidPaidTo
 } from '../src/app/expenses/expense.model';
 import { filterAndSort, parseFilterCriteria } from '../src/app/expenses/expense-filters';
 import { currentUser, requireUser } from './auth.router';
@@ -86,10 +88,17 @@ export function parseNewExpense(body: unknown): ParseResult {
   if (typeof body !== 'object' || body === null) {
     return { ok: false, error: 'Body must be a JSON object' };
   }
-  const { title, amount, category, date } = body as Record<string, unknown>;
+  const { title, paidTo, amount, category, date } = body as Record<string, unknown>;
 
   if (typeof title !== 'string' || title.trim().length === 0 || title.trim().length > TITLE_MAX_LENGTH) {
     return { ok: false, error: `Title must be 1-${TITLE_MAX_LENGTH} characters.` };
+  }
+  if (paidTo !== undefined && paidTo !== null && typeof paidTo !== 'string') {
+    return { ok: false, error: 'Paid to must be text.' };
+  }
+  const trimmedPaidTo = (paidTo ?? '').trim();
+  if (!isValidPaidTo(trimmedPaidTo)) {
+    return { ok: false, error: `Paid to can only contain letters and spaces (max ${PAID_TO_MAX_LENGTH}).` };
   }
   if (
     typeof amount !== 'number' ||
@@ -107,7 +116,7 @@ export function parseNewExpense(body: unknown): ParseResult {
     return { ok: false, error: 'Date must be a valid YYYY-MM-DD date.' };
   }
 
-  return { ok: true, value: { title: title.trim(), amount, category, date } };
+  return { ok: true, value: { title: title.trim(), paidTo: trimmedPaidTo, amount, category, date } };
 }
 
 function isCategory(value: string): value is ExpenseCategory {

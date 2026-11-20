@@ -7,8 +7,8 @@ import { settle, signIn } from '../testing/sign-in';
 import { Expense, NewExpense } from './expense.model';
 import { EXPENSES_API, ExpenseService } from './expense.service';
 
-const lunch: Expense = { id: 'a', title: 'Lunch', amount: 250, category: 'Food', date: '2026-10-01' };
-const taxi: Expense = { id: 'b', title: 'Taxi', amount: 400, category: 'Travel', date: '2026-10-02' };
+const lunch: Expense = { id: 'a', title: 'Lunch', paidTo: '', amount: 250, category: 'Food', date: '2026-10-01' };
+const taxi: Expense = { id: 'b', title: 'Taxi', paidTo: '', amount: 400, category: 'Travel', date: '2026-10-02' };
 
 function withoutId({ id: _id, ...rest }: Expense): NewExpense {
   return rest;
@@ -119,7 +119,7 @@ describe('ExpenseService', () => {
     });
 
     it('edit() PUTs the changes and replaces the expense in place', async () => {
-      const changes: NewExpense = { ...withoutId(lunch), title: 'Dinner', amount: 600 };
+      const changes: NewExpense = { ...withoutId(lunch), title: 'Dinner', paidTo: '', amount: 600 };
       const result = service.edit('a', changes);
 
       const req = http.expectOne({ method: 'PUT', url: `${EXPENSES_API}/a` });

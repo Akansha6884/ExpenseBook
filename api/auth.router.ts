@@ -101,14 +101,11 @@ export function authRouter(users: UserRepository): Router {
     res.status(204).end();
   });
 
+  // Signed out is a normal answer here, not an error: null with 200, so the browser
+  // doesn't log a failed request on every signed-out page load.
   router.get('/me', (req, res) => {
     const token = readSessionCookie(req);
-    const user = token ? users.userForSession(token) : null;
-    if (!user) {
-      res.status(401).json({ error: 'Not signed in.' });
-      return;
-    }
-    res.json(user);
+    res.json(token ? users.userForSession(token) : null);
   });
 
   router.use(jsonErrors);

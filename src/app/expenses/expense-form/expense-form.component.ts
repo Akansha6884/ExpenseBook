@@ -13,8 +13,10 @@ import {
   AMOUNT_MIN,
   EXPENSE_CATEGORIES,
   ExpenseCategory,
+  PAID_TO_MAX_LENGTH,
   TITLE_MAX_LENGTH,
-  hasAtMostTwoDecimals
+  hasAtMostTwoDecimals,
+  isValidPaidTo
 } from '../expense.model';
 import { ExpenseService } from '../expense.service';
 
@@ -35,6 +37,7 @@ export class ExpenseFormComponent {
 
   readonly categories = EXPENSE_CATEGORIES;
   readonly titleMaxLength = TITLE_MAX_LENGTH;
+  readonly paidToMaxLength = PAID_TO_MAX_LENGTH;
   readonly amountMin = AMOUNT_MIN;
   readonly amountMax = AMOUNT_MAX;
   readonly lastAdded = signal<string | null>(null);
@@ -54,6 +57,7 @@ export class ExpenseFormComponent {
 
   readonly form = this.fb.group({
     title: ['', [notBlank, Validators.maxLength(TITLE_MAX_LENGTH)]],
+    paidTo: ['', paidToValid],
     // Nullable so the field is blank (not "0") on a fresh form.
     amount: new FormControl<number | null>(null, [
       Validators.required,
@@ -71,14 +75,14 @@ export class ExpenseFormComponent {
     effect(() => {
       const expense = this.editing();
       if (expense) {
-        const { title, amount, category, date } = expense;
-        this.form.reset({ title, amount, category, date });
+        const { title, paidTo, amount, category, date } = expense;
+        this.form.reset({ title, paidTo, amount, category, date });
       }
     });
   }
 
   async submit(): Promise<void> {
-    const { title: rawTitle, amount, category, date } = this.form.getRawValue();
+    const { title: rawTitle, paidTo: rawPaidTo, amount, category, date } = this.form.getRawValue();
     if (this.form.invalid || amount === null) {
       this.form.markAllAsTouched();
       return;
@@ -87,7 +91,8 @@ export class ExpenseFormComponent {
       return;
     }
     const title = rawTitle.trim();
-    const expense = { title, amount, category, date };
+    const paidTo = rawPaidTo.trim();
+    const expense = { title, paidTo, amount, category, date };
     const id = this.id();
 
     this.saving.set(true);
@@ -101,7 +106,7 @@ export class ExpenseFormComponent {
 
       if (await this.expenseService.add(expense)) {
         this.lastAdded.set(title);
-        this.form.reset({ title: '', amount: null, category, date });
+        this.form.reset({ title: '', paidTo: '', amount: null, category, date });
       }
     } finally {
       this.saving.set(false);
@@ -112,6 +117,15 @@ export class ExpenseFormComponent {
 /** Like Validators.required, but also rejects whitespace-only text (the API trims titles). */
 function notBlank(control: AbstractControl<string>): ValidationErrors | null {
   return control.value.trim().length === 0 ? { required: true } : null;
+}
+
+/** Optional: empty is fine; otherwise the trimmed text must pass isValidPaidTo (same rule as the API). */
+function paidToValid(control: AbstractControl<string>): ValidationErrors | null {
+  const trimmed = control.value.trim();
+  if (trimmed.length > PAID_TO_MAX_LENGTH) {
+    return { maxlength: true };
+  }
+  return isValidPaidTo(trimmed) ? null : { pattern: true };
 }
 
 function twoDecimals(control: AbstractControl<number | null>): ValidationErrors | null {

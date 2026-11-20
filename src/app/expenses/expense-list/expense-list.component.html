@@ -77,7 +77,7 @@
           <li>
             <div class="info">
               <strong>{{ expense.title }}</strong>
-              <small>{{ expense.category }} · {{ expense.date | date: 'mediumDate' }}</small>
+              <small>{{ expense.category }} · @if (expense.paidTo) { Paid to {{ expense.paidTo }} · } {{ expense.date | date: 'mediumDate' }}</small>
             </div>
             <span class="amount">{{ expense.amount | currency: 'INR' }}</span>
             <a [routerLink]="['/edit', expense.id]" class="btn-secondary">Edit</a>

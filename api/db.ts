@@ -2,7 +2,7 @@ import Database from 'better-sqlite3';
 import { randomUUID } from 'node:crypto';
 import { mkdirSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
-import { EXPENSE_CATEGORIES, Expense, ExpenseCategory, NewExpense } from '../src/app/expenses/expense.model';
+import { EXPENSE_CATEGORIES, Expense, ExpenseCategory, NewExpense, PAID_TO_MAX_LENGTH } from '../src/app/expenses/expense.model';
 
 /** Default database file; override with the DB_PATH env var (`:memory:` for tests). */
 export const DEFAULT_DB_PATH = resolve(process.cwd(), 'data', 'expense-book.db');
@@ -10,6 +10,8 @@ export const DEFAULT_DB_PATH = resolve(process.cwd(), 'data', 'expense-book.db')
 export type Db = Database.Database;
 
 const categoryList = EXPENSE_CATEGORIES.map((c) => `'${c}'`).join(', ');
+
+const PAID_TO_COLUMN = `paid_to TEXT NOT NULL DEFAULT '' CHECK (length(paid_to) <= ${PAID_TO_MAX_LENGTH} AND paid_to NOT GLOB '*[^A-Za-z ]*')`;
 
 const SCHEMA = `
   CREATE TABLE IF NOT EXISTS users (
@@ -28,6 +30,7 @@ const SCHEMA = `
   CREATE TABLE IF NOT EXISTS expenses (
     id       TEXT PRIMARY KEY,
     title    TEXT NOT NULL CHECK (length(title) BETWEEN 1 AND 60),
+    ${PAID_TO_COLUMN},
     amount   REAL NOT NULL CHECK (amount > 0),
     category TEXT NOT NULL CHECK (category IN (${categoryList})),
     date     TEXT NOT NULL,
@@ -55,18 +58,22 @@ function migrate(db: Db): void {
     // Pre-accounts databases: existing rows get NULL and are claimed by the first account.
     db.exec('ALTER TABLE expenses ADD COLUMN user_id TEXT REFERENCES users(id) ON DELETE CASCADE');
   }
+  if (!columns.some((c) => c.name === 'paid_to')) {
+    db.exec(`ALTER TABLE expenses ADD COLUMN ${PAID_TO_COLUMN}`);
+  }
   db.exec('CREATE INDEX IF NOT EXISTS expenses_user_id ON expenses(user_id)');
 }
 
 interface ExpenseRow {
   id: string;
   title: string;
+  paid_to: string;
   amount: number;
   category: string;
   date: string;
 }
 
-const COLUMNS = 'id, title, amount, category, date';
+const COLUMNS = 'id, title, paid_to, amount, category, date';
 
 /** Every method is scoped to one user: nobody can read or change another user's expenses. */
 export class ExpenseRepository {
@@ -84,7 +91,7 @@ export class ExpenseRepository {
     const created: Expense = { ...expense, id: randomUUID() };
     this.db
       .prepare<[Expense & { userId: string }]>(
-        `INSERT INTO expenses (${COLUMNS}, user_id) VALUES (@id, @title, @amount, @category, @date, @userId)`
+        `INSERT INTO expenses (${COLUMNS}, user_id) VALUES (@id, @title, @paidTo, @amount, @category, @date, @userId)`
       )
       .run({ ...created, userId });
     return created;
@@ -95,7 +102,7 @@ export class ExpenseRepository {
     const updated: Expense = { ...changes, id };
     const result = this.db
       .prepare<[Expense & { userId: string }]>(
-        `UPDATE expenses SET title = @title, amount = @amount, category = @category, date = @date
+        `UPDATE expenses SET title = @title, paid_to = @paidTo, amount = @amount, category = @category, date = @date
          WHERE id = @id AND user_id = @userId`
       )
       .run({ ...updated, userId });
@@ -110,5 +117,6 @@ export class ExpenseRepository {
 
 function toExpense(row: ExpenseRow): Expense {
   // The CHECK constraint guarantees category is one of EXPENSE_CATEGORIES.
-  return { ...row, category: row.category as ExpenseCategory };
+  const { paid_to, ...rest } = row;
+  return { ...rest, paidTo: paid_to, category: row.category as ExpenseCategory };
 }

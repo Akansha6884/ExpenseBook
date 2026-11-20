@@ -16,10 +16,10 @@ import { ExpenseFilterStore } from './expense-filter.store';
 
 // API order: newest added first.
 const expenses: Expense[] = [
-  { id: 'd', title: 'Movie tickets', amount: 500, category: 'Other', date: '2026-10-20' },
-  { id: 'c', title: 'Electricity bill', amount: 1800, category: 'Bills', date: '2026-09-15' },
-  { id: 'b', title: 'Train to Pune', amount: 300, category: 'Travel', date: '2026-10-05' },
-  { id: 'a', title: 'Groceries', amount: 1200.5, category: 'Food', date: '2026-08-30' }
+  { id: 'd', title: 'Movie tickets', paidTo: '', amount: 500, category: 'Other', date: '2026-10-20' },
+  { id: 'c', title: 'Electricity bill', paidTo: '', amount: 1800, category: 'Bills', date: '2026-09-15' },
+  { id: 'b', title: 'Train to Pune', paidTo: '', amount: 300, category: 'Travel', date: '2026-10-05' },
+  { id: 'a', title: 'Groceries', paidTo: '', amount: 1200.5, category: 'Food', date: '2026-08-30' }
 ];
 
 function ids(c: Partial<ExpenseFilterCriteria>): string[] {

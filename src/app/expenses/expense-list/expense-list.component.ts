@@ -29,13 +29,11 @@ export class ExpenseListComponent {
   readonly visible = computed(() => filterAndSort(this.expenses(), this.criteria()));
   readonly visibleTotal = computed(() => this.visible().reduce((sum, e) => sum + e.amount, 0));
 
-  /** Export links get the same filters and sort as the list, so the file matches what is shown. */
-  private readonly exportQuery = computed(() => {
+  /** The export link gets the same filters and sort as the list, so the file matches what is shown. */
+  readonly xlsxUrl = computed(() => {
     const query = new URLSearchParams(toQueryParams(this.criteria())).toString();
-    return query ? `?${query}` : '';
+    return `${EXPENSES_API}/export.xlsx${query ? `?${query}` : ''}`;
   });
-  readonly csvUrl = computed(() => `${EXPENSES_API}/export.csv${this.exportQuery()}`);
-  readonly xlsxUrl = computed(() => `${EXPENSES_API}/export.xlsx${this.exportQuery()}`);
 
   setSearch(search: string): void {
     this.filters.update({ search });

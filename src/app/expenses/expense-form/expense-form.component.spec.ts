@@ -7,7 +7,7 @@ import { EXPENSES_API, ExpenseService } from '../expense.service';
 import { ExpenseFormComponent } from './expense-form.component';
 import { settle, signIn } from '../../testing/sign-in';
 
-const saved: Expense = { id: 'e1', title: 'Rent', amount: 15000, category: 'Bills', date: '2026-10-05' };
+const saved: Expense = { id: 'e1', title: 'Rent', paidTo: '', amount: 15000, category: 'Bills', date: '2026-10-05' };
 
 describe('ExpenseFormComponent', () => {
   let fixture: ComponentFixture<ExpenseFormComponent>;
@@ -68,6 +68,11 @@ describe('ExpenseFormComponent', () => {
       expect(date).toBe(`${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`);
     });
 
+    it('shows an optional Paid to field with a label, right after Title', () => {
+      const labels = Array.from(el.querySelectorAll('label')).map((l) => l.firstChild?.textContent?.trim());
+      expect(labels.slice(0, 3)).toEqual(['Title', 'Paid to', 'Amount (₹)']);
+    });
+
     it('does not send anything and shows errors when the form is invalid', async () => {
       await component.submit();
       fixture.detectChanges();
@@ -125,13 +130,74 @@ describe('ExpenseFormComponent', () => {
 
       const done = component.submit();
       const req = http.expectOne({ method: 'POST', url: EXPENSES_API });
-      expect(req.request.body).toEqual({ title: 'Coffee', amount: 120, category: 'Food', date: '2026-10-10' });
+      expect(req.request.body).toEqual({ title: 'Coffee', paidTo: '', amount: 120, category: 'Food', date: '2026-10-10' });
       req.flush({ ...req.request.body, id: 'new' });
       await done;
       fixture.detectChanges();
 
       expect(service.expenses().map((e) => e.id)).toEqual(['new']);
       expect(el.querySelector('.success')?.textContent).toContain('"Coffee" added.');
+    });
+
+    function paidToLabel(): HTMLElement {
+      return el.querySelector<HTMLElement>('input[formcontrolname=paidTo]')!.closest('label')!;
+    }
+
+    for (const paidTo of ['Big Bazaar', 'Ramesh', '']) {
+      it(`POSTs Paid to "${paidTo}"`, async () => {
+        component.form.patchValue({ title: 'Coffee', paidTo, amount: 5 });
+
+        const done = component.submit();
+        const req = http.expectOne({ method: 'POST', url: EXPENSES_API });
+        expect((req.request.body as { paidTo: string }).paidTo).toBe(paidTo);
+        req.flush({ ...saved, id: 'new' });
+        await done;
+      });
+    }
+
+    for (const paidTo of ['Shop 24', 'Ramesh!', 'A&B', 'Big  Bazaar']) {
+      it(`rejects Paid to "${paidTo}" with a message and sends nothing`, async () => {
+        component.form.patchValue({ title: 'Coffee', paidTo, amount: 5 });
+
+        await component.submit();
+        fixture.detectChanges();
+
+        http.expectNone(EXPENSES_API);
+        expect(paidToLabel().textContent).toContain('Use letters and single spaces only.');
+      });
+    }
+
+    it('rejects a Paid to of 41 letters, accepts 40', async () => {
+      component.form.patchValue({ title: 'Coffee', paidTo: 'a'.repeat(41), amount: 5 });
+
+      await component.submit();
+      fixture.detectChanges();
+
+      http.expectNone(EXPENSES_API);
+      expect(paidToLabel().textContent).toContain('At most 40 characters.');
+
+      component.form.patchValue({ paidTo: 'a'.repeat(40) });
+      expect(component.form.controls.paidTo.valid).toBeTrue();
+    });
+
+    it('trims Paid to before sending', async () => {
+      component.form.patchValue({ title: 'Coffee', paidTo: '  Ramesh  ', amount: 5 });
+
+      const done = component.submit();
+      const req = http.expectOne({ method: 'POST', url: EXPENSES_API });
+      expect((req.request.body as { paidTo: string }).paidTo).toBe('Ramesh');
+      req.flush({ ...saved, id: 'new' });
+      await done;
+    });
+
+    it('empties Paid to after an add', async () => {
+      component.form.patchValue({ title: 'Coffee', paidTo: 'Ramesh', amount: 5 });
+
+      const done = component.submit();
+      http.expectOne(EXPENSES_API).flush({ ...saved, id: 'new' });
+      await done;
+
+      expect(component.form.controls.paidTo.value).toBe('');
     });
 
     it('disables the button while saving', async () => {
@@ -155,7 +221,7 @@ describe('ExpenseFormComponent', () => {
       http.expectOne(EXPENSES_API).flush({ ...saved, id: 'new' });
       await done;
 
-      expect(component.form.getRawValue()).toEqual({ title: '', amount: null, category: 'Travel', date: '2026-10-11' });
+      expect(component.form.getRawValue()).toEqual({ title: '', paidTo: '', amount: null, category: 'Travel', date: '2026-10-11' });
     });
 
     it('keeps the form filled in when the API call fails', async () => {
@@ -186,10 +252,17 @@ describe('ExpenseFormComponent', () => {
 
       expect(component.form.getRawValue()).toEqual({
         title: 'Rent',
+        paidTo: '',
         amount: 15000,
         category: 'Bills',
         date: '2026-10-05'
       });
+    });
+
+    it('shows the Paid to field filled with the saved value', async () => {
+      await create([{ ...saved, paidTo: 'Big Bazaar' }], 'e1');
+
+      expect(el.querySelector<HTMLInputElement>('input[formcontrolname=paidTo]')?.value).toBe('Big Bazaar');
     });
 
     it('PUTs the changes and navigates back to the list', async () => {
@@ -199,10 +272,10 @@ describe('ExpenseFormComponent', () => {
 
       const done = component.submit();
       const req = http.expectOne({ method: 'PUT', url: `${EXPENSES_API}/e1` });
-      req.flush({ ...saved, title: 'Rent (Oct)', amount: 16000 });
+      req.flush({ ...saved, title: 'Rent (Oct)', paidTo: '', amount: 16000 });
       await done;
 
-      expect(service.expenses()).toEqual([{ ...saved, title: 'Rent (Oct)', amount: 16000 }]);
+      expect(service.expenses()).toEqual([{ ...saved, title: 'Rent (Oct)', paidTo: '', amount: 16000 }]);
       expect(navigate).toHaveBeenCalledWith(['/expenses']);
     });
 

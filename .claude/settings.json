@@ -1,0 +1,51 @@
+{
+  "plansDirectory": ".claude/plans",
+  "permissions": {
+    "allow": [
+      "Bash(npm run test:api)",
+      "Bash(npm run typecheck:api)",
+      "Bash(npx ng test *)",
+      "Bash(git status *)",
+      "Bash(git diff *)",
+      "Bash(git log *)",
+      "PowerShell(npm run test:api)",
+      "PowerShell(npm run typecheck:api)",
+      "PowerShell(npx ng test *)",
+      "PowerShell(git status *)",
+      "PowerShell(git diff *)",
+      "PowerShell(git log *)"
+    ],
+    "deny": [
+      "Read(data/*.db*)",
+      "Edit(data/*.db*)",
+      "Bash(*expense-book.db*)",
+      "PowerShell(*expense-book.db*)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/check-no-any.mjs\"",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/typecheck-api.mjs\"",
+            "timeout": 60,
+            "statusMessage": "Type-checking the API..."
+          }
+        ]
+      }
+    ]
+  }
+}
