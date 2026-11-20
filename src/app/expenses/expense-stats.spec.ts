@@ -2,7 +2,7 @@ import { Expense } from './expense.model';
 import { categoryTotals, monthKeyOf, monthlyTotals, shiftMonth } from './expense-stats';
 
 function expense(id: string, amount: number, category: Expense['category'], date: string): Expense {
-  return { id, title: id, amount, category, date };
+  return { id, title: id, paidTo: '', amount, category, date };
 }
 
 describe('expense stats', () => {

@@ -15,17 +15,17 @@ const thisMonth = monthKeyOf(new Date());
 const lastMonth = shiftMonth(thisMonth, -1);
 
 const expenses: Expense[] = [
-  { id: 'a', title: 'Groceries', amount: 600, category: 'Food', date: `${thisMonth}-01` },
-  { id: 'b', title: 'Train', amount: 300, category: 'Travel', date: `${thisMonth}-02` },
-  { id: 'c', title: 'Rent', amount: 1000, category: 'Bills', date: `${lastMonth}-05` },
-  { id: 'd', title: 'Snacks', amount: 100, category: 'Food', date: `${lastMonth}-06` }
+  { id: 'a', title: 'Groceries', paidTo: '', amount: 600, category: 'Food', date: `${thisMonth}-01` },
+  { id: 'b', title: 'Train', paidTo: '', amount: 300, category: 'Travel', date: `${thisMonth}-02` },
+  { id: 'c', title: 'Rent', paidTo: '', amount: 1000, category: 'Bills', date: `${lastMonth}-05` },
+  { id: 'd', title: 'Snacks', paidTo: '', amount: 100, category: 'Food', date: `${lastMonth}-06` }
 ];
 
 const emptyMonth = shiftMonth(thisMonth, -2);
 const oldMonth = shiftMonth(thisMonth, -3);
 const book: Expense[] = [
   ...expenses,
-  { id: 'e', title: 'Bus', amount: 50, category: 'Travel', date: `${oldMonth}-15` }
+  { id: 'e', title: 'Bus', paidTo: '', amount: 50, category: 'Travel', date: `${oldMonth}-15` }
 ];
 
 describe('SummaryComponent', () => {
@@ -191,7 +191,7 @@ describe('SummaryComponent', () => {
 
       it('lists every month from the latest to the oldest expense, newest first', async () => {
         const future = shiftMonth(thisMonth, 2);
-        await open([...book, { id: 'f', title: 'Trip', amount: 10, category: 'Travel', date: `${future}-20` }]);
+        await open([...book, { id: 'f', title: 'Trip', paidTo: '', amount: 10, category: 'Travel', date: `${future}-20` }]);
 
         const values = Array.from(select().options).map((o) => o.value);
         expect(values).toEqual([
@@ -206,15 +206,15 @@ describe('SummaryComponent', () => {
       });
 
       it('ends at the current month when every expense is older', async () => {
-        await open([{ id: 'a', title: 'Old', amount: 5, category: 'Food', date: `${lastMonth}-01` }]);
+        await open([{ id: 'a', title: 'Old', paidTo: '', amount: 5, category: 'Food', date: `${lastMonth}-01` }]);
 
         expect(Array.from(select().options).map((o) => o.value)).toEqual(['all', thisMonth, lastMonth]);
       });
 
       it('keeps the same month in different years apart, in the long format', async () => {
         await open([
-          { id: 'a', title: 'New', amount: 5, category: 'Food', date: '2026-03-10' },
-          { id: 'b', title: 'Old', amount: 5, category: 'Food', date: '2025-03-10' }
+          { id: 'a', title: 'New', paidTo: '', amount: 5, category: 'Food', date: '2026-03-10' },
+          { id: 'b', title: 'Old', paidTo: '', amount: 5, category: 'Food', date: '2025-03-10' }
         ]);
 
         const names = Array.from(select().options).map((o) => o.textContent);
@@ -244,7 +244,7 @@ describe('SummaryComponent', () => {
         await open(book);
         const future = shiftMonth(thisMonth, 1);
 
-        const added = TestBed.inject(ExpenseService).add({ title: 'Trip', amount: 10, category: 'Travel', date: `${future}-01` });
+        const added = TestBed.inject(ExpenseService).add({ title: 'Trip', paidTo: '', amount: 10, category: 'Travel', date: `${future}-01` });
         http.expectOne({ method: 'POST', url: EXPENSES_API }).flush({
           id: 'n',
           title: 'Trip',
@@ -333,10 +333,10 @@ describe('SummaryComponent', () => {
 
     it('counts an expense by its stored date, first and last day included', async () => {
       await open([
-        { id: 'a', title: 'First', amount: 10, category: 'Food', date: '2026-01-01' },
-        { id: 'b', title: 'Last', amount: 20, category: 'Food', date: '2026-01-31' },
-        { id: 'c', title: 'Before', amount: 100, category: 'Food', date: '2025-12-31' },
-        { id: 'd', title: 'After', amount: 200, category: 'Food', date: '2026-02-01' }
+        { id: 'a', title: 'First', paidTo: '', amount: 10, category: 'Food', date: '2026-01-01' },
+        { id: 'b', title: 'Last', paidTo: '', amount: 20, category: 'Food', date: '2026-01-31' },
+        { id: 'c', title: 'Before', paidTo: '', amount: 100, category: 'Food', date: '2025-12-31' },
+        { id: 'd', title: 'After', paidTo: '', amount: 200, category: 'Food', date: '2026-02-01' }
       ]);
 
       selectMonth('2026-01');
@@ -346,8 +346,8 @@ describe('SummaryComponent', () => {
 
     it('adds up a month to the paisa', async () => {
       await open([
-        { id: 'a', title: 'One', amount: 0.1, category: 'Food', date: `${thisMonth}-01` },
-        { id: 'b', title: 'Two', amount: 0.2, category: 'Food', date: `${thisMonth}-01` }
+        { id: 'a', title: 'One', paidTo: '', amount: 0.1, category: 'Food', date: `${thisMonth}-01` },
+        { id: 'b', title: 'Two', paidTo: '', amount: 0.2, category: 'Food', date: `${thisMonth}-01` }
       ]);
 
       selectMonth(thisMonth);
@@ -358,7 +358,7 @@ describe('SummaryComponent', () => {
 
     it('moves the window back for a month older than it, and returns for All time', async () => {
       const older = shiftMonth(thisMonth, -20);
-      await open([...book, { id: 'o', title: 'Old', amount: 75, category: 'Food', date: `${older}-10` }]);
+      await open([...book, { id: 'o', title: 'Old', paidTo: '', amount: 75, category: 'Food', date: `${older}-10` }]);
 
       selectMonth(older);
 
@@ -626,7 +626,7 @@ describe('SummaryComponent', () => {
 
     it('moves the window back for an older month', async () => {
       const older = shiftMonth(thisMonth, -20);
-      await open([...book, { id: 'o', title: 'Old', amount: 75, category: 'Food', date: `${older}-10` }]);
+      await open([...book, { id: 'o', title: 'Old', paidTo: '', amount: 75, category: 'Food', date: `${older}-10` }]);
 
       selectCategory('Food');
       selectMonth(older);
@@ -640,9 +640,9 @@ describe('SummaryComponent', () => {
 
     it('adds up a category to the paisa', async () => {
       await open([
-        { id: 'a', title: 'One', amount: 0.1, category: 'Food', date: `${thisMonth}-01` },
-        { id: 'b', title: 'Two', amount: 0.2, category: 'Food', date: `${thisMonth}-01` },
-        { id: 'c', title: 'Bill', amount: 0.7, category: 'Bills', date: `${thisMonth}-01` }
+        { id: 'a', title: 'One', paidTo: '', amount: 0.1, category: 'Food', date: `${thisMonth}-01` },
+        { id: 'b', title: 'Two', paidTo: '', amount: 0.2, category: 'Food', date: `${thisMonth}-01` },
+        { id: 'c', title: 'Bill', paidTo: '', amount: 0.7, category: 'Bills', date: `${thisMonth}-01` }
       ]);
 
       selectCategory('Food');
@@ -696,7 +696,7 @@ describe('SummaryComponent', () => {
 
     it('shows empty bars when the category only has expenses older than the chart', async () => {
       const older = shiftMonth(thisMonth, -20);
-      await open([...book, { id: 's', title: 'Coat', amount: 75, category: 'Shopping', date: `${older}-10` }]);
+      await open([...book, { id: 's', title: 'Coat', paidTo: '', amount: 75, category: 'Shopping', date: `${older}-10` }]);
 
       selectCategory('Shopping');
 

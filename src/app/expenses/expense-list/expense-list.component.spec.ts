@@ -8,8 +8,8 @@ import { ExpenseListComponent } from './expense-list.component';
 import { settle, signIn } from '../../testing/sign-in';
 
 const expenses: Expense[] = [
-  { id: 'a', title: 'Groceries', amount: 1200.5, category: 'Food', date: '2026-10-03' },
-  { id: 'b', title: 'Train', amount: 300, category: 'Travel', date: '2026-10-01' }
+  { id: 'a', title: 'Groceries', paidTo: 'Big Bazaar', amount: 1200.5, category: 'Food', date: '2026-10-03' },
+  { id: 'b', title: 'Train', paidTo: '', amount: 300, category: 'Travel', date: '2026-10-01' }
 ];
 
 describe('ExpenseListComponent', () => {
@@ -162,10 +162,21 @@ describe('ExpenseListComponent', () => {
     });
   });
 
+  describe('Paid to', () => {
+    it('shows "Paid to <name>" in the detail line only when it is set', async () => {
+      await create();
+      await respondWith(expenses);
+
+      const [withName, without] = rows().map((li) => (li.querySelector('small')?.textContent ?? '').replace(/\s+/g, ' '));
+      expect(withName).toContain('Food · Paid to Big Bazaar ·');
+      expect(without).not.toContain('Paid to');
+    });
+  });
+
   describe('filters and sorting', () => {
     const more: Expense[] = [
       ...expenses,
-      { id: 'c', title: 'Electricity bill', amount: 1800, category: 'Bills', date: '2026-09-15' }
+      { id: 'c', title: 'Electricity bill', paidTo: '', amount: 1800, category: 'Bills', date: '2026-09-15' }
     ];
 
     function titles(): string[] {

@@ -17,8 +17,8 @@ import { parseNewExpense } from './expenses.router';
 import { toCsv } from './export';
 import { UserRepository } from './users';
 
-const lunch: NewExpense = { title: 'Lunch', amount: 250, category: 'Food', date: '2026-10-01' };
-const taxi: NewExpense = { title: 'Taxi', amount: 400, category: 'Travel', date: '2026-10-02' };
+const lunch: NewExpense = { title: 'Lunch', paidTo: '', amount: 250, category: 'Food', date: '2026-10-01' };
+const taxi: NewExpense = { title: 'Taxi', paidTo: 'Ola Cabs', amount: 400, category: 'Travel', date: '2026-10-02' };
 const password = 'correct horse battery';
 
 interface Reply {
@@ -279,12 +279,47 @@ describe('Expense API', () => {
     });
   });
 
+  describe('paid to', () => {
+    beforeEach(async () => {
+      await alice.signUp('alice@example.com');
+    });
+
+    it('saves it trimmed on POST and PUT, and returns it from GET', async () => {
+      const created = await alice.add({ ...lunch, paidTo: '  Big Bazaar ' });
+      assert.equal(created.paidTo, 'Big Bazaar');
+      const put = await alice.call('PUT', `/expenses/${created.id}`, { ...lunch, paidTo: ' Ramesh' });
+      assert.equal((put.data as Expense).paidTo, 'Ramesh');
+      assert.equal(((await alice.call('GET', '/expenses')).data as Expense[])[0].paidTo, 'Ramesh');
+    });
+
+    it('saves an empty value when a body has no paidTo (older clients)', async () => {
+      const { paidTo: _omitted, ...body } = taxi;
+      const created = (await alice.call('POST', '/expenses', body)).data as Expense;
+      assert.equal(created.paidTo, '');
+      const put = await alice.call('PUT', `/expenses/${created.id}`, body);
+      assert.equal((put.data as Expense).paidTo, '');
+    });
+
+    it('rejects an invalid value with JSON 400 and saves nothing', async () => {
+      for (const paidTo of ['Shop 24', 'A&B', 'Big  Bazaar', 'a'.repeat(41), 123]) {
+        const res = await alice.call('POST', '/expenses', { ...lunch, paidTo });
+        assert.equal(res.status, 400);
+        assert.ok(typeof (res.data as { error: unknown }).error === 'string');
+      }
+      assert.deepEqual((await alice.call('GET', '/expenses')).data, []);
+
+      const created = await alice.add(taxi);
+      assert.equal((await alice.call('PUT', `/expenses/${created.id}`, { ...taxi, paidTo: 'Ramesh!' })).status, 400);
+      assert.deepEqual((await alice.call('GET', '/expenses')).data, [created]);
+    });
+  });
+
   describe('export', () => {
     beforeEach(async () => {
       await alice.signUp('alice@example.com');
-      await alice.add({ title: 'Rent', amount: 15000, category: 'Bills', date: '2026-09-01' });
-      await alice.add({ title: 'Tea, "masala"', amount: 20.5, category: 'Food', date: '2026-10-05' });
-      await alice.add({ title: '=HYPERLINK("http://evil")', amount: 1, category: 'Other', date: '2026-10-06' });
+      await alice.add({ title: 'Rent', paidTo: 'Ramesh Kumar', amount: 15000, category: 'Bills', date: '2026-09-01' });
+      await alice.add({ title: 'Tea, "masala"', paidTo: '', amount: 20.5, category: 'Food', date: '2026-10-05' });
+      await alice.add({ title: '=HYPERLINK("http://evil")', paidTo: '', amount: 1, category: 'Other', date: '2026-10-06' });
     });
 
     it('CSV downloads as a dated attachment with a BOM, header and quoted cells', async () => {
@@ -296,10 +331,10 @@ describe('Expense API', () => {
       assert.match(res.headers.get('content-disposition') ?? '', /attachment; filename="expenses-\d{4}-\d{2}-\d{2}\.csv"/);
       assert.equal(new Uint8Array(res.raw).slice(0, 3).join(','), '239,187,191'); // UTF-8 BOM
       assert.deepEqual(text.replace('﻿', '').split('\r\n'), [
-        'Date,Title,Category,Amount (INR)',
-        `2026-10-06,"'=HYPERLINK(""http://evil"")",Other,1.00`,
-        '2026-10-05,"Tea, ""masala""",Food,20.50',
-        '2026-09-01,Rent,Bills,15000.00',
+        'Date,Title,Paid to,Category,Amount (INR)',
+        `2026-10-06,"'=HYPERLINK(""http://evil"")",,Other,1.00`,
+        '2026-10-05,"Tea, ""masala""",,Food,20.50',
+        '2026-09-01,Rent,Ramesh Kumar,Bills,15000.00',
         ''
       ]);
     });
@@ -307,7 +342,12 @@ describe('Expense API', () => {
     it('applies the same filters and sort as the list', async () => {
       const res = await alice.call('GET', '/expenses/export.csv?from=2026-10-01&sort=amount-desc&category=Food');
       const lines = (res.data as string).trim().split('\r\n');
-      assert.deepEqual(lines.slice(1), ['2026-10-05,"Tea, ""masala""",Food,20.50']);
+      assert.deepEqual(lines.slice(1), ['2026-10-05,"Tea, ""masala""",,Food,20.50']);
+    });
+
+    it('keeps Paid to with the filtered rows', async () => {
+      const res = await alice.call('GET', '/expenses/export.csv?category=Bills');
+      assert.deepEqual((res.data as string).trim().split('\r\n').slice(1), ['2026-09-01,Rent,Ramesh Kumar,Bills,15000.00']);
     });
 
     it('ignores invalid filter values instead of failing', async () => {
@@ -326,28 +366,31 @@ describe('Expense API', () => {
       await workbook.xlsx.load(res.raw);
       const sheet = workbook.getWorksheet('Expenses');
       assert.ok(sheet);
-      assert.deepEqual([1, 2, 3, 4].map((col) => sheet.getRow(1).getCell(col).value), ['Date', 'Title', 'Category', 'Amount (INR)']);
+      assert.deepEqual([1, 2, 3, 4, 5].map((col) => sheet.getRow(1).getCell(col).value),
+        ['Date', 'Title', 'Paid to', 'Category', 'Amount (INR)']);
       assert.equal(sheet.getRow(1).font?.bold, true);
 
       const first = sheet.getRow(2);
       assert.ok(first.getCell(1).value instanceof Date);
       assert.equal((first.getCell(1).value as Date).toISOString(), '2026-09-01T00:00:00.000Z');
       assert.equal(first.getCell(2).value, 'Rent');
-      assert.equal(first.getCell(4).value, 15000);
-      assert.equal(first.getCell(4).numFmt, '"₹"#,##0.00');
+      assert.equal(first.getCell(3).value, 'Ramesh Kumar');
+      assert.ok(!sheet.getRow(3).getCell(3).value); // no Paid to: empty cell
+      assert.equal(first.getCell(5).value, 15000);
+      assert.equal(first.getCell(5).numFmt, '"₹"#,##0.00');
 
       // The formula-looking title is stored as plain text.
       assert.equal(sheet.getRow(4).getCell(2).value, '=HYPERLINK("http://evil")');
 
       const total = sheet.getRow(5);
       assert.equal(total.getCell(2).value, 'Total');
-      assert.deepEqual(total.getCell(4).value, { formula: 'SUM(D2:D4)', result: 15021.5 });
+      assert.deepEqual(total.getCell(5).value, { formula: 'SUM(E2:E4)', result: 15021.5 });
     });
 
     it('exports an empty book as just the header', async () => {
       await bob.signUp('bob@example.com');
       // TextDecoder drops the BOM; the CSV test above checks the raw bytes for it.
-      assert.equal(((await bob.call('GET', '/expenses/export.csv')).data as string).trim(), 'Date,Title,Category,Amount (INR)');
+      assert.equal(((await bob.call('GET', '/expenses/export.csv')).data as string).trim(), 'Date,Title,Paid to,Category,Amount (INR)');
       assert.equal((await bob.call('GET', '/expenses/export.xlsx')).status, 200);
     });
   });
@@ -399,7 +442,29 @@ describe('database file', () => {
       ['old-1']
     );
     assert.deepEqual(expenses.list(second.id), []);
+    assert.equal(expenses.list(first.id)[0].paidTo, '');
     db.close();
+  });
+
+  it('adds paid_to to an older database, keeps its rows as empty, and enforces the CHECK', () => {
+    const file = join(dir, 'older.db');
+    const old = new Database(file);
+    old.exec(`CREATE TABLE users (id TEXT PRIMARY KEY, email TEXT NOT NULL UNIQUE, password_hash TEXT NOT NULL, created_at TEXT NOT NULL);
+              CREATE TABLE expenses (id TEXT PRIMARY KEY, title TEXT NOT NULL, amount REAL NOT NULL,
+              category TEXT NOT NULL, date TEXT NOT NULL, user_id TEXT REFERENCES users(id))`);
+    old.prepare("INSERT INTO users VALUES ('u1', 'a@b.co', 'x', '2026-01-01')").run();
+    old.prepare("INSERT INTO expenses VALUES ('old-1', 'Old rent', 9000, 'Bills', '2026-01-01', 'u1')").run();
+    old.close();
+
+    const db = openDatabase(file);
+    const expenses = new ExpenseRepository(db);
+    assert.deepEqual(expenses.list('u1'), [
+      { id: 'old-1', title: 'Old rent', paidTo: '', amount: 9000, category: 'Bills', date: '2026-01-01' }
+    ]);
+    assert.equal(expenses.create('u1', { ...lunch, paidTo: 'Big Bazaar' }).paidTo, 'Big Bazaar');
+    assert.throws(() => expenses.create('u1', { ...lunch, paidTo: 'Shop 24' }));
+    db.close();
+    openDatabase(file).close(); // a second start is a no-op
   });
 });
 
@@ -417,7 +482,13 @@ describe('parseNewExpense', () => {
     ['infinite amount', { ...lunch, amount: Infinity }],
     ['unknown category', { ...lunch, category: 'Rent' }],
     ['badly formatted date', { ...lunch, date: '01-10-2026' }],
-    ['impossible date', { ...lunch, date: '2026-02-30' }]
+    ['impossible date', { ...lunch, date: '2026-02-30' }],
+    ['paid to with digits', { ...lunch, paidTo: 'Shop 24' }],
+    ['paid to with a symbol', { ...lunch, paidTo: 'Ramesh!' }],
+    ['paid to with an ampersand', { ...lunch, paidTo: 'A&B' }],
+    ['paid to with a double space', { ...lunch, paidTo: 'Big  Bazaar' }],
+    ['paid to over 40 letters', { ...lunch, paidTo: 'a'.repeat(41) }],
+    ['paid to as a number', { ...lunch, paidTo: 123 }]
   ];
 
   for (const [name, body] of invalid) {
@@ -431,6 +502,14 @@ describe('parseNewExpense', () => {
       assert.equal(parseNewExpense({ ...lunch, amount }).ok, true);
     });
   }
+
+  it('treats a missing or null paid to as empty, and trims it', () => {
+    const { paidTo: _omitted, ...withoutPaidTo } = lunch;
+    assert.deepEqual(parseNewExpense(withoutPaidTo), { ok: true, value: lunch });
+    assert.deepEqual(parseNewExpense({ ...lunch, paidTo: null }), { ok: true, value: lunch });
+    assert.deepEqual(parseNewExpense({ ...lunch, paidTo: '  Ramesh  ' }), { ok: true, value: { ...lunch, paidTo: 'Ramesh' } });
+    assert.equal(parseNewExpense({ ...lunch, paidTo: 'a'.repeat(40) }).ok, true);
+  });
 
   it('accepts a valid expense and ignores extra fields', () => {
     assert.deepEqual(parseNewExpense({ ...lunch, id: 'ignored', extra: true }), { ok: true, value: lunch });
