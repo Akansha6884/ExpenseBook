@@ -2,7 +2,7 @@
   <h1>Expense Book</h1>
   @if (user(); as user) {
     <nav>
-      <a routerLink="/expenses" routerLinkActive="active">Expenses</a>
+      <a routerLink="/expenses" [class.active]="onExpensesTab()">Expenses</a>
       <a routerLink="/summary" routerLinkActive="active">Summary</a>
       <a routerLink="/add" routerLinkActive="active">Add Expense</a>
     </nav>

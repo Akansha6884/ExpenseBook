@@ -122,14 +122,18 @@
       </ol>
       <details>
         <summary>Show as table</summary>
-        <table>
-          <thead><tr><th>Month</th><th>Expenses</th><th>Total</th></tr></thead>
-          <tbody>
-            @for (m of months(); track m.month) {
-              <tr><td>{{ m.month + '-01' | date: 'MMMM yyyy' }}</td><td>{{ m.count }}</td><td>{{ m.total | currency: 'INR' }}</td></tr>
-            }
-          </tbody>
-        </table>
+        @if (tableMonths().length === 0) {
+          <p class="empty-table">No spending in these months</p>
+        } @else {
+          <table>
+            <thead><tr><th>Month</th><th>Expenses</th><th>Total</th></tr></thead>
+            <tbody>
+              @for (m of tableMonths(); track m.month) {
+                <tr><td>{{ m.month + '-01' | date: 'MMMM yyyy' }}</td><td>{{ m.count }}</td><td>{{ m.total | currency: 'INR' }}</td></tr>
+              }
+            </tbody>
+          </table>
+        }
       </details>
     }
   </section>

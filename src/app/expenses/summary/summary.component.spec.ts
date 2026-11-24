@@ -91,6 +91,13 @@ describe('SummaryComponent', () => {
     return Array.from(el.querySelectorAll<HTMLElement>('.column .bar')).map((b) => b.style.height);
   }
 
+  /** Each row of the Show as table view as [month, expenses, total]. */
+  function tableRows(): string[][] {
+    return Array.from(el.querySelectorAll('details tbody tr')).map((tr) =>
+      Array.from(tr.querySelectorAll('td')).map((td) => td.textContent?.trim() ?? '')
+    );
+  }
+
   async function removeExpense(id: string): Promise<void> {
     const removed = TestBed.inject(ExpenseService).remove(id);
     http.expectOne({ method: 'DELETE', url: `${EXPENSES_API}/${id}` }).flush(null, { status: 204, statusText: 'No Content' });
@@ -165,10 +172,14 @@ describe('SummaryComponent', () => {
       expect(label).toContain('₹900.00 (2)');
     });
 
-    it('offers the monthly numbers as a table', () => {
-      const rows = el.querySelectorAll('details tbody tr');
-      expect(rows.length).toBe(12);
-      expect(rows[11].textContent).toContain('₹900.00');
+    it('offers the monthly numbers as a table, leaving out months without spending', () => {
+      expect(tableRows()).toEqual([
+        [monthName(lastMonth, 'MMMM yyyy'), '2', '₹1,100.00'],
+        [monthName(thisMonth, 'MMMM yyyy'), '2', '₹900.00']
+      ]);
+      expect(el.querySelector('details')?.textContent).not.toContain('₹0.00');
+      expect(el.querySelector('.empty-table')).toBeNull();
+      expect(el.querySelectorAll('.column').length).toBe(12);
     });
 
     it('lists categories largest first with share of total', () => {
@@ -320,14 +331,14 @@ describe('SummaryComponent', () => {
         expect(color('.column.dimmed .bar')).toBe('rgba(42, 120, 214, 0.4)');
       });
 
-      it('keeps the tooltips and table for all 12 months', () => {
+      it('keeps the tooltips for all 12 months, and the table for months with spending', () => {
         selectMonth(lastMonth);
 
         const tips = Array.from(el.querySelectorAll('.column')).map((c) => c.getAttribute('data-tip') ?? '');
         expect(tips.length).toBe(12);
         expect(tips[10]).toContain('₹1,100.00 (2)');
         expect(tips[10]).not.toContain('selected');
-        expect(el.querySelectorAll('details tbody tr').length).toBe(12);
+        expect(tableRows().map((r) => r[0])).toEqual([oldMonth, lastMonth, thisMonth].map((m) => monthName(m, 'MMMM yyyy')));
       });
     });
 
@@ -368,9 +379,7 @@ describe('SummaryComponent', () => {
       const columns = el.querySelectorAll('.column');
       expect(columns.length).toBe(12);
       expect(columns[11].classList).toContain('selected');
-      const rows = el.querySelectorAll('details tbody tr');
-      expect(rows.length).toBe(12);
-      expect(rows[11].textContent).toContain(monthName(older, 'MMMM yyyy'));
+      expect(tableRows()).toEqual([[monthName(older, 'MMMM yyyy'), '1', '₹75.00']]);
 
       selectMonth('all');
 
@@ -561,10 +570,11 @@ describe('SummaryComponent', () => {
         expect(texts('.caption')[0]).toContain('Last 12 months');
         expect(texts('.cap')).toEqual(['₹600']);
 
-        const rows = el.querySelectorAll('details tbody tr');
-        expect(rows.length).toBe(12);
-        expect(rows[11].textContent).toContain('₹600.00');
-        expect(rows[8].textContent).toContain('₹0.00');
+        // Only the months with Food spending; the Travel-only month is left out of the table.
+        expect(tableRows()).toEqual([
+          [monthName(lastMonth, 'MMMM yyyy'), '1', '₹100.00'],
+          [monthName(thisMonth, 'MMMM yyyy'), '1', '₹600.00']
+        ]);
       });
 
       it('keeps every category in By category and highlights the selected one', () => {
@@ -603,6 +613,14 @@ describe('SummaryComponent', () => {
         expect(columns[10].getAttribute('data-tip')).toContain('₹100.00 (1)');
         expect(el.querySelectorAll('.column.dimmed').length).toBe(11);
         expect(columns[11].getAttribute('data-tip')).toContain('₹600.00 (1)');
+      });
+
+      it('lists only months with that category in the table', () => {
+        expect(tableRows()).toEqual([
+          [monthName(lastMonth, 'MMMM yyyy'), '1', '₹100.00'],
+          [monthName(thisMonth, 'MMMM yyyy'), '1', '₹600.00']
+        ]);
+        expect(el.querySelectorAll('.column').length).toBe(12);
       });
 
       it("lists only that month's categories, with the category highlighted", () => {
@@ -702,6 +720,8 @@ describe('SummaryComponent', () => {
 
       expect(el.textContent).not.toContain('No data available');
       expect(barHeights()).toEqual(Array<string>(12).fill('0%'));
+      expect(tableRows()).toEqual([]);
+      expect(el.querySelector('details .empty-table')?.textContent?.trim()).toBe('No spending in these months');
       expect(texts('.caption')[0]).toContain('Last 12 months');
       expect(texts('.tile .value')).toEqual(['₹75.00', '₹0.00', '4%']);
       expect(el.querySelector('.hbars li.selected .name')?.textContent).toBe('Shopping');

@@ -1,7 +1,8 @@
+import { Component } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
-import { Router, provideRouter } from '@angular/router';
+import { Router, Routes, provideRouter } from '@angular/router';
 import { AppComponent } from './app.component';
 import { AUTH_API } from './auth/auth.service';
 import { EXPENSES_API, ExpenseService } from './expenses/expense.service';

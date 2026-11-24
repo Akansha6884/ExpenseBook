@@ -40,7 +40,7 @@ You may run the project's read-only checks to back up a finding: `npm run typech
 Start with a one-line verdict: **Looks good**, **Minor issues**, or **Needs changes**.
 
 Then list findings, most serious first. For each one give:
-- **Severity:** 🔴 bug or rule break / 🟡 should fix / 🟢 nitpick
+- **Severity:** bug or rule break / should fix / nitpick
 - **Where:** `path/to/file.ts:line`
 - **What and why**, in one or two sentences
 - **Suggested fix**, short, as text or a small snippet

@@ -85,6 +85,8 @@ export class SummaryComponent {
     return month !== 'all' && month < shiftMonth(latest, -11) ? month : latest;
   });
   readonly months = computed(() => monthlyTotals(this.categoryExpenses(), this.chartEnd()));
+  /** The table lists only months with spending; the chart keeps all 12. */
+  readonly tableMonths = computed(() => this.months().filter((m) => m.count > 0));
   readonly monthMax = computed(() => Math.max(...this.months().map((m) => m.total)));
   readonly thisMonth = computed(() => this.months().find((m) => m.month === monthKeyOf(new Date()))?.total ?? 0);
 
